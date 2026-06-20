@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0B0414" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Forest HQ · Chapter II</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍄</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+  // Silence only Babel's "in-browser transformer" production nag — keeps all real warnings.
+  (function () {
+    var _warn = console.warn;
+    console.warn = function () {
+      var msg = arguments.length ? String(arguments[0]) : "";
+      if (msg.indexOf("in-browser Babel transformer") !== -1 || msg.indexOf("precompile your scripts") !== -1) return;
+      return _warn.apply(console, arguments);
+    };
+  })();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: #0B0414; }
+  button { font-family: inherit; cursor: pointer; }
+  input, select { font-family: inherit; color: #F3EBFF; }
+  select { background: #241441; }
+  option { background: #170B29; color: #F3EBFF; }
+  @keyframes drift { 0%{transform:translate(0,0);opacity:.95} 50%{transform:translate(9px,-12px);opacity:.25} 100%{transform:translate(0,0);opacity:.95} }
+  @keyframes twinkle { 0%,100%{opacity:.9} 50%{opacity:.15} }
+  @media (prefers-reduced-motion: reduce) { .fly, .star { animation: none !important; } }
+  ::placeholder { color: #6E5F8E; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+
+/* ============================================================
+   FOREST HQ — STANDALONE EDITION
+   ------------------------------------------------------------
+   SETUP (one time):
+   1. Create a free Firebase project → Realtime Database
+   2. Set rules to: {"rules": {".read": true, ".write": true}}
+   3. Paste your database URL between the quotes below.
+      It looks like: https://YOUR-PROJECT-default-rtdb.firebaseio.com
+   Leave it empty ("") and the app still works — local-only,
+   per-device, no group sync.
+   ============================================================ */
+const FIREBASE_DB_URL = "https://electric-forest-2026-default-rtdb.firebaseio.com"; // ← PASTE YOUR FIREBASE DATABASE URL HERE
+
+const { useState, useEffect, useRef } = React;
+
+const C = {
+  bg: "#0B0414", card: "#170B29", card2: "#1F1038",
+  ink: "#F3EBFF", faint: "#9C8FB8", line: "#2E1B4D",
+  green: "#3DFF8C", greenDk: "#0E3B22",
+  pink: "#FF4FC3", pinkDk: "#43102F",
+  amber: "#FFB02E", amberDk: "#3E2A07",
+  cyan: "#4FE3FF", cyanDk: "#0B3340",
+  purple: "#9D4FFF", purpleDk: "#2A1247",
+  chip: "#241441",
+};
+const RAINBOW = "linear-gradient(92deg,#FF4FC3 0%,#FFB02E 28%,#3DFF8C 55%,#4FE3FF 78%,#9D4FFF 100%)";
+const FONT_HEAD = "'Bricolage Grotesque','Arial Black',sans-serif";
+const FONT_MONO = "'IBM Plex Mono',monospace";
+
+const THEMES = {
+  none: { label: "Unassigned", color: "#9C8FB8", soft: "#241441", emoji: "·" },
+  night: { label: "Night Sky", color: "#B98CFF", soft: "#2A1247", emoji: "🌌" },
+  puff: { label: "Powerpuff", color: "#FF6FCB", soft: "#43102F", emoji: "🎀" },
+  goose: { label: "Goose Jerseys", color: "#4FE3FF", soft: "#0B3340", emoji: "🪿" },
+  free: { label: "Free Spirit", color: "#3DFF8C", soft: "#0E3B22", emoji: "✨" },
+};
+const FIT_STAGES = ["—", "Planned", "Ordered", "Ready"];
+
+function defaultPacking() {
+  return [
+    ["Sunscreen (big group bottle)", "Sun & Heat"],
+    ["Aloe / after-sun gel", "Sun & Heat"],
+    ["Bug spray", "Sun & Heat"],
+    ["Electrolytes (Liquid IV / Lmnt) — bulk", "Sun & Heat"],
+    ["Case(s) of water for the RV", "Sun & Heat"],
+    ["Cooler + ice plan (Walmart run)", "RV / Good Life"],
+    ["Power strip + long extension cord (RV hookup)", "RV / Good Life"],
+    ["Charging block / multi-USB for overnight", "RV / Good Life"],
+    ["Outdoor rug / mat for under the awning", "RV / Good Life"],
+    ["Folding camp chairs (outdoor hang)", "RV / Good Life"],
+    ["Battery fan(s) for the RV", "RV / Good Life"],
+    ["Trash bags (RV stays PRISTINE)", "RV / Good Life"],
+    ["Paper towels + disinfecting wipes", "RV / Good Life"],
+    ["Dish soap + sponge (shared kitchen)", "RV / Good Life"],
+    ["Command hooks / clips (no damage!)", "RV / Good Life"],
+    ["String/LED lights for the RV vibe", "RV / Good Life"],
+    ["Coffee + maker plan (group caffeine)", "Food & Kitchen"],
+    ["Breakfast food (Walmart run)", "Food & Kitchen"],
+    ["Group snacks / munchies", "Food & Kitchen"],
+    ["Paper plates, cups, utensils", "Food & Kitchen"],
+    ["Foil + ziplocs + a sharp knife", "Food & Kitchen"],
+    ["First aid / meds kit (group mom bag)", "Health & Safety"],
+    ["Ear plugs (RV sleep + sets) — multipack", "Health & Safety"],
+    ["Baby wipes + hand sanitizer", "Health & Safety"],
+    ["Rain ponchos (multipack)", "Health & Safety"],
+    ["Toilet paper backup (festival reality)", "Health & Safety"],
+    ["Totem / meetup marker (find the crew)", "Forest Fun"],
+    ["Group glitter / face gems stash", "Forest Fun"],
+    ["Portable speaker (RV pregame)", "Forest Fun"],
+    ["Disco ball porta potty energy (TBD lol)", "Forest Fun"],
+  ].map(function (r, i) { return { id: "p" + (i + 1), name: r[0], cat: r[1], by: "", done: false }; });
+}
+
+const SEED = {
+  v: 2, updatedAt: 0,
+  crew: [
+    { id: "sarah", name: "Sarah ⭐", host: false },
+    { id: "alyssa", name: "Alyssa 🪿", host: false },
+    { id: "rachel", name: "Rachel", host: false },
+    { id: "jeff", name: "Jeff Weezy", host: true },
+    { id: "mark", name: "Mark", host: true },
+  ],
+  tasks: [
+    { id: "t1", title: "Book flights (Delta option?)", owner: "all girls", due: "ASAP", status: "open", pri: "high" },
+    { id: "t2", title: "Book the one (1) rental car — name, insurance, trunk math", owner: "", due: "ASAP", status: "open", pri: "high" },
+    { id: "t3", title: "Lock braid appointments — Wed 6/24", owner: "all girls", due: "Jun 10", status: "open", pri: "pre" },
+    { id: "t4", title: "Assign Night Sky + Powerpuff days (Fits tab)", owner: "GC vote", due: "Jun 12", status: "open", pri: "pre" },
+    { id: "t5", title: "Order goose jerseys (~$25 each)", owner: "Sarah ⭐", due: "Jun 5", status: "open", pri: "pre" },
+    { id: "t6", title: "Outdoor hang setup w/ Jeff (inflatable couch, 10x10)", owner: "Rachel", due: "—", status: "waiting", pri: "gen" },
+    { id: "t7", title: "Star/glitter accessories for Sarah", owner: "Alyssa 🪿", due: "Jun 15", status: "open", pri: "pre" },
+    { id: "t8", title: "Claim everything on the Pack tab", owner: "everyone", due: "Jun 18", status: "open", pri: "pre" },
+    { id: "t9", title: "Walmart run: food, water, ice, breakfast stuff (Wed, near venue)", owner: "", due: "Jun 24", status: "open", pri: "pre" },
+  ],
+  days: [
+    { id: "wed", label: "Wed 6/24", sub: "Travel + braids", theme: "free", rally: "", fits: {}, chars: {} },
+    { id: "thu", label: "Thu 6/25", sub: "Chapter II begins", theme: "none", rally: "", fits: {}, chars: {} },
+    { id: "fri", label: "Fri 6/26", sub: "Forest Day 2", theme: "none", rally: "", fits: {}, chars: {} },
+    { id: "sat", label: "Sat 6/27", sub: "Forest Day 3", theme: "none", rally: "", fits: {}, chars: {} },
+    { id: "sun", label: "Sun 6/28", sub: "Forest Day 4", theme: "none", rally: "", fits: {}, chars: {} },
+  ],
+  packing: defaultPacking(),
+  wishlist: [],
+  expenses: [],
+  charterSigs: [],
+  travel: {
+    jeff: { in: { via: "rv", detail: "Fly → DTW Wed ~6am · grab RV (1.5h away) · park by Wed evening", booked: true }, out: { via: "rv", detail: "RV return run after the fest", booked: true }, note: "RV is under Jeff's name — handle with reverence" },
+    mark: { in: { via: "rv", detail: "With Jeff — DTW Wed AM → RV pickup → forest", booked: true }, out: { via: "rv", detail: "With Jeff", booked: true }, note: "" },
+  },
+  ground: { car: "", note: "1 rental car for the girls · parks with the RV via Jeff's companion parking pass" },
+};
+
+const CHARTER = [
+  "The RV is for sleeping. The forest is for everything else.",
+  "The RV stays in showroom condition. The owner is one scuff away from a meltdown and Jeff vouched for us.",
+  "WE'RE IN THE FOREST FINALLY! Good Vibes — and as my lord and savior Subtronics says, \"Be Fucking Nice.\"",
+  "AC + gas discipline: daytime hangs happen outside or in the lounge, not idling in the RV.",
+  "Whoever needs sleep, sleeps. Awake people relocate.",
+  "Girlypops only — side quests encouraged but we are not playing hide and go seek (unless we actually want to do that haha) please communicate ✌️🌈💖",
+  "If someone is overwhelmed, dehydrated, or feral: water first, shade second, questions later.",
+];
+
+function uid() { return Math.random().toString(36).slice(2, 9); }
+const SYNCED = !!FIREBASE_DB_URL;
+const DB = FIREBASE_DB_URL.replace(/\/+$/, "");
+
+/* ---------- storage layer: Firebase RTDB REST or localStorage ---------- */
+async function remoteGet() {
+  const res = await fetch(`${DB}/forest-hq.json`);
+  if (!res.ok) throw new Error(`GET ${res.status}`);
+  return res.json(); // null if empty
+}
+async function remotePut(data) {
+  const res = await fetch(`${DB}/forest-hq.json`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+  if (!res.ok) throw new Error(`PUT ${res.status}`);
+}
+function localGet() {
+  try { const s = localStorage.getItem("forest-hq-v1"); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+}
+function localSet(d) {
+  try { localStorage.setItem("forest-hq-v1", JSON.stringify(d)); } catch (e) {}
+}
+function normalize(d) {
+  if (!d) return null;
+  // Firebase drops empty arrays — restore them
+  const fix = (k) => { if (!Array.isArray(d[k])) d[k] = []; };
+  ["crew", "tasks", "days", "packing", "wishlist", "expenses", "charterSigs"].forEach(fix);
+  d.days = d.days.map(x => ({ fits: {}, chars: {}, rally: "", ...x, fits: x.fits || {}, chars: x.chars || {} }));
+  d.travel = d.travel || {};
+  d.ground = d.ground || { car: "", note: "" };
+  const PRI_MAP = { t1: "high", t2: "high", t3: "pre", t4: "pre", t5: "pre", t7: "pre", t8: "pre", t9: "pre" };
+  d.tasks = d.tasks.map(t => ({ ...t, pri: t.pri || PRI_MAP[t.id] || "gen" }));
+  d.packing = d.packing.map(p => ({ ...p, cat: p.cat || "RV / Good Life" }));
+  return d;
+}
+
+function App() {
+  const [data, setDataRaw] = useState(null);
+  const [me, setMe] = useState(null);
+  const [tab, setTab] = useState("hq");
+  const [now, setNow] = useState(Date.now());
+  const [sync, setSync] = useState(SYNCED ? "connecting" : "local"); // connecting | synced | error | local
+  const dataRef = useRef(null);
+  const dirtyRef = useRef(false);
+  const saveTimer = useRef(null);
+  const setData = (d) => { dataRef.current = d; setDataRaw(d); };
+
+  useEffect(() => {
+    (async () => {
+      let initial = null;
+      if (SYNCED) {
+        try { initial = normalize(await remoteGet()); setSync("synced"); }
+        catch (e) { setSync("error"); initial = localGet(); }
+      } else {
+        initial = localGet();
+      }
+      if (!initial) {
+        initial = { ...SEED, updatedAt: Date.now() };
+        if (SYNCED) { try { await remotePut(initial); } catch (e) {} }
+      }
+      setData(initial);
+      localSet(initial);
+      try { const m = localStorage.getItem("forest-hq-me"); if (m && initial.crew.some(c => c.id === m)) setMe(m); } catch (e) {}
+    })();
+    const t = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  // poll for the crew's updates every 8s
+  useEffect(() => {
+    if (!SYNCED) return;
+    const t = setInterval(async () => {
+      if (dirtyRef.current) return; // don't clobber unsaved local edits
+      try {
+        const remote = normalize(await remoteGet());
+        setSync("synced");
+        if (remote && dataRef.current && (remote.updatedAt || 0) > (dataRef.current.updatedAt || 0)) {
+          setData(remote);
+          localSet(remote);
+        }
+      } catch (e) { setSync("error"); }
+    }, 8000);
+    return () => clearInterval(t);
+  }, []);
+
+  const isQA = me === "__qa__";
+
+  function commit(next) {
+    next = { ...next, updatedAt: Date.now() };
+    setData(next); // QA mode: state updates locally so you can test, but never saves
+    if (isQA) return;
+    localSet(next);
+    if (!SYNCED) return;
+    dirtyRef.current = true;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try { await remotePut(dataRef.current); setSync("synced"); }
+      catch (e) { setSync("error"); }
+      finally { dirtyRef.current = false; }
+    }, 500);
+  }
+
+  function pickMe(id) {
+    setMe(id);
+    if (id === "__qa__") return; // ghost mode is never remembered
+    try { id ? localStorage.setItem("forest-hq-me", id) : localStorage.removeItem("forest-hq-me"); } catch (e) {}
+  }
+
+  if (!data) return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_MONO, color: C.purple }}>
+      tuning frequencies…
+    </div>
+  );
+
+  if (!me) return <WhoAreYou crew={data.crew} onPick={pickMe} />;
+
+  const meName = isQA ? "QA Ghost 👻" : ((data.crew.find(c => c.id === me) || {}).name || "?");
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.ink, fontFamily: "system-ui,-apple-system,sans-serif", paddingBottom: 88 }}>
+      <Header now={now} meName={meName} qa={isQA} sync={sync} onSwitch={async () => {
+        if (isQA) {
+          let fresh = null;
+          if (SYNCED) { try { fresh = normalize(await remoteGet()); } catch (e) {} }
+          if (!fresh) fresh = localGet() || { ...SEED, updatedAt: Date.now() };
+          setData(fresh); setMe(null);
+        } else { pickMe(""); setMe(null); }
+      }} />
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "16px 14px 0" }}>
+        {tab === "hq" && <MissionControl data={data} commit={commit} me={me} />}
+        {tab === "fits" && <Fits data={data} commit={commit} me={me} />}
+        {tab === "pack" && <Pack data={data} commit={commit} meName={meName} />}
+        {tab === "plan" && <Plan data={data} commit={commit} meName={meName} />}
+        {tab === "travel" && <Travel data={data} commit={commit} me={me} />}
+        {tab === "cash" && <Cash data={data} commit={commit} me={me} />}
+        {tab === "charter" && <Charter data={data} commit={commit} meName={meName} />}
+      </div>
+      <QuickAdd data={data} commit={commit} meName={meName} setTab={setTab} />
+      <TabBar tab={tab} setTab={setTab} />
+    </div>
+  );
+}
+
+/* ---------- rainbow text ---------- */
+function Rainbow({ children, size = 24, style }) {
+  return (
+    <span style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: size, background: RAINBOW, WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent", lineHeight: 1.05, display: "inline-block", ...style }}>
+      {children}
+    </span>
+  );
+}
+
+/* ---------- identity gate ---------- */
+function WhoAreYou({ crew, onPick }) {
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative", overflow: "hidden" }}>
+      <Stars n={26} />
+      <div style={{ maxWidth: 420, width: "100%", position: "relative" }}>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: 2, color: C.amber, marginBottom: 10 }}>FOREST HQ · ACCESS PORTAL</div>
+        <Rainbow size={36} style={{ marginBottom: 6 }}>Who walks through the portal?</Rainbow>
+        <div style={{ color: C.faint, fontSize: 14, margin: "10px 0 22px" }}>Sets who you are on this device. Everything you tap is visible to the whole crew — this is a shared HQ.</div>
+        {crew.map(c => (
+          <button key={c.id} onClick={() => onPick(c.id)} style={{ display: "block", width: "100%", textAlign: "left", background: C.card, border: `1px solid ${C.line}`, color: C.ink, borderRadius: 14, padding: "14px 16px", fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
+            {c.name}{c.host ? <span style={{ fontFamily: FONT_MONO, fontSize: 10, color: C.amber, marginLeft: 8 }}>RV HOST</span> : null}
+          </button>
+        ))}
+        <button onClick={() => onPick("__qa__")} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: `1px dashed ${C.cyan}88`, color: C.cyan, borderRadius: 14, padding: "13px 16px", fontSize: 14, fontWeight: 600, marginTop: 4 }}>
+          👻 QA Ghost Mode <span style={{ fontFamily: FONT_MONO, fontSize: 10, color: C.faint, marginLeft: 6 }}>BROWSE + TEST · NOTHING SAVES</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Stars({ n = 14 }) {
+  const pts = Array.from({ length: n }, (_, i) => ({
+    t: (i * 37) % 100, l: (i * 53) % 100, s: 1.5 + (i % 3), dur: 3 + (i % 5),
+    col: [C.green, C.pink, C.cyan, C.amber, C.purple][i % 5],
+  }));
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      {pts.map((p, i) => (
+        <div key={i} className="star" style={{ position: "absolute", top: `${p.t}%`, left: `${p.l}%`, width: p.s, height: p.s, borderRadius: 99, background: p.col, boxShadow: `0 0 8px 1px ${p.col}`, animation: `twinkle ${p.dur}s ease-in-out infinite` }} />
+      ))}
+    </div>
+  );
+}
+
+/* ---------- header w/ countdown + sync light ---------- */
+function Header({ now, meName, qa, sync, onSwitch }) {
+  const gates = new Date("2026-06-24T08:00:00-04:00").getTime();
+  const ms = Math.max(0, gates - now);
+  const d = Math.floor(ms / 86400000);
+  const h = Math.floor((ms % 86400000) / 3600000);
+  const syncCfg = {
+    synced: { col: C.green, label: "SYNCED" },
+    connecting: { col: C.amber, label: "CONNECTING" },
+    error: { col: C.pink, label: "SYNC ERROR" },
+    local: { col: C.amber, label: "LOCAL ONLY" },
+  }[sync] || { col: C.faint, label: "" };
+  return (
+    <div>
+      {qa && (
+        <button onClick={onSwitch} style={{ display: "block", width: "100%", background: C.cyanDk, color: C.cyan, border: "none", borderBottom: `1px solid ${C.cyan}66`, fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: 1.5, padding: "8px 12px", fontWeight: 600 }}>
+          👻 QA MODE · CHANGES ARE NOT SAVED · TAP HERE TO EXIT
+        </button>
+      )}
+      <div style={{ background: "linear-gradient(180deg,#120724 0%,#0B0414 100%)", padding: "14px 16px 18px", position: "relative", overflow: "hidden", borderBottom: "1px solid #2E1B4D" }}>
+        <Stars n={18} />
+        {[{ t: 14, l: "80%", s: 5, dur: 6, col: C.green }, { t: 34, l: "66%", s: 4, dur: 9, col: C.pink }, { t: 56, l: "88%", s: 4, dur: 7, col: C.cyan }].map((f, i) => (
+          <div key={i} className="fly" style={{ position: "absolute", top: f.t, left: f.l, width: f.s, height: f.s, borderRadius: 99, background: f.col, boxShadow: `0 0 12px 3px ${f.col}`, animation: `drift ${f.dur}s ease-in-out infinite` }} />
+        ))}
+        <div style={{ maxWidth: 560, margin: "0 auto", position: "relative" }}>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 10, letterSpacing: 2, color: C.amber, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>FOREST HQ · CHAPTER II</span>
+            <span style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <span title={syncCfg.label} style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: 1, color: syncCfg.col }}>
+                <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: 99, background: syncCfg.col, boxShadow: `0 0 6px ${syncCfg.col}`, marginRight: 4, verticalAlign: "middle" }} />
+                {syncCfg.label}
+              </span>
+              <button onClick={onSwitch} style={{ background: "none", border: "none", color: C.faint, fontFamily: FONT_MONO, fontSize: 10, letterSpacing: 1, padding: 0 }}>{meName} ⌄</button>
+            </span>
+          </div>
+          <div style={{ marginTop: 6 }}>
+            <Rainbow size={27}>The Odyssey of Frequencies</Rainbow>
+          </div>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 12, color: C.faint, marginTop: 5 }}>
+            Electric Forest · June 25–28 · RV staging Wed 6/24
+          </div>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 12, marginTop: 3 }}>
+            <span style={{ color: C.green, fontWeight: 600, textShadow: `0 0 10px ${C.green}66` }}>{d}d {h}h to the portal ✦</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- shared bits ---------- */
+function SectionTitle({ kicker, title }) {
+  return (
+    <div style={{ margin: "6px 0 12px" }}>
+      <div style={{ fontFamily: FONT_MONO, fontSize: 10, letterSpacing: 2, color: C.amber }}>{kicker}</div>
+      <Rainbow size={23}>{title}</Rainbow>
+    </div>
+  );
+}
+function Card({ children, style }) {
+  return <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 14, marginBottom: 10, ...style }}>{children}</div>;
+}
+const inputStyle = { background: C.chip, border: `1px solid ${C.line}`, borderRadius: 8, padding: "7px 9px", fontSize: 13, color: C.ink, outline: "none" };
+
+/* ---------- HQ: executive dashboard ---------- */
+const CATS = [
+  { id: "high", label: "HIGH PRIORITY", icon: "🔥", color: "#FF4FC3", dk: "#43102F", blurb: "BOOK OR PERISH" },
+  { id: "pre", label: "BEFORE ARRIVAL", icon: "📦", color: "#FFB02E", dk: "#3E2A07", blurb: "WALMART-TIER LOGISTICS" },
+  { id: "gen", label: "REMAINING", icon: "🌲", color: "#3DFF8C", dk: "#0E3B22", blurb: "EVERYTHING ELSE" },
+];
+
+function MissionControl({ data, commit }) {
+  const [newTask, setNewTask] = useState("");
+  const [newPri, setNewPri] = useState("gen");
+  const tasks = data.tasks;
+  const doneList = tasks.filter(t => t.status === "done");
+  const pct = tasks.length ? Math.round((doneList.length / tasks.length) * 100) : 0;
+  const R = 50, CIRC = 2 * Math.PI * R;
+
+  function cycle(t) {
+    const order = ["open", "waiting", "done"];
+    const next = order[(order.indexOf(t.status) + 1) % 3];
+    commit({ ...data, tasks: data.tasks.map(x => x.id === t.id ? { ...x, status: next } : x) });
+  }
+  function patch(t, p) {
+    commit({ ...data, tasks: data.tasks.map(x => x.id === t.id ? { ...x, ...p } : x) });
+  }
+  function remove(t) {
+    commit({ ...data, tasks: data.tasks.filter(x => x.id !== t.id) });
+  }
+  function add() {
+    if (!newTask.trim()) return;
+    commit({ ...data, tasks: [...data.tasks, { id: uid(), title: newTask.trim(), owner: "", due: "", status: "open", pri: newPri }] });
+    setNewTask("");
+  }
+
+  const badge = (s) => s === "waiting"
+    ? { bg: C.amberDk, fg: C.amber, label: "WAITING" }
+    : { bg: C.pinkDk, fg: C.pink, label: "OPEN" };
+
+  return (
+    <div>
+      <SectionTitle kicker="EXECUTIVE DASHBOARD · CHAPTER II READINESS" title="Mission Control" />
+
+      {/* summary card */}
+      <Card style={{ display: "flex", gap: 16, alignItems: "center", background: C.card2, border: `1px solid ${C.purple}55`, boxShadow: `0 0 24px ${C.purple}22` }}>
+        <div style={{ position: "relative", width: 116, height: 116, flexShrink: 0 }}>
+          <svg width="116" height="116" viewBox="0 0 116 116">
+            <defs>
+              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FF4FC3" /><stop offset="30%" stopColor="#FFB02E" />
+                <stop offset="55%" stopColor="#3DFF8C" /><stop offset="80%" stopColor="#4FE3FF" />
+                <stop offset="100%" stopColor="#9D4FFF" />
+              </linearGradient>
+            </defs>
+            <circle cx="58" cy="58" r={R} stroke={C.chip} strokeWidth="10" fill="none" />
+            <circle cx="58" cy="58" r={R} stroke="url(#ringGrad)" strokeWidth="10" fill="none" strokeLinecap="round"
+              strokeDasharray={`${CIRC * pct / 100} ${CIRC}`} transform="rotate(-90 58 58)" />
+          </svg>
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: 26, color: C.ink }}>{pct}%</span>
+            <span style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: 1, color: C.faint }}>READY</span>
+          </div>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", gap: 14, marginBottom: 8 }}>
+            <div>
+              <div style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: 24, color: C.green, textShadow: `0 0 12px ${C.green}55` }}>{doneList.length}</div>
+              <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: 1, color: C.faint }}>DONE</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: 24, color: C.pink, textShadow: `0 0 12px ${C.pink}55` }}>{tasks.length - doneList.length}</div>
+              <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: 1, color: C.faint }}>OUTSTANDING</div>
+            </div>
+          </div>
+          {CATS.map(cat => {
+            const catOpen = tasks.filter(t => (t.pri || "gen") === cat.id && t.status !== "done").length;
+            return (
+              <div key={cat.id} style={{ fontFamily: FONT_MONO, fontSize: 10, color: catOpen ? cat.color : C.faint, lineHeight: 1.7 }}>
+                {cat.icon} {cat.label}: <b>{catOpen}</b> open
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* categorized outstanding actions */}
+      {CATS.map(cat => {
+        const list = tasks.filter(t => (t.pri || "gen") === cat.id && t.status !== "done");
+        if (!list.length) return (
+          <div key={cat.id} style={{ margin: "16px 4px 8px" }}>
+            <span style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: 1.5, color: cat.color }}>{cat.icon} {cat.label}</span>
+            <span style={{ fontFamily: FONT_MONO, fontSize: 10, color: C.green, marginLeft: 8 }}>ALL CLEAR ✓</span>
+          </div>
+        );
+        return (
+          <div key={cat.id}>
+            <div style={{ margin: "16px 4px 8px", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: 1.5, color: cat.color, textShadow: `0 0 10px ${cat.color}44` }}>{cat.icon} {cat.label} · {list.length}</span>
+              <span style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: 1, color: C.faint }}>{cat.blurb}</span>
+            </div>
+            {list.map(t => {
+              const b = badge(t.status);
+              return (
+                <Card key={t.id} style={{ padding: 12, borderLeft: `4px solid ${cat.color}`, boxShadow: `0 0 14px ${cat.color}18` }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <button onClick={() => cycle(t)} style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: 1, background: b.bg, color: b.fg, border: `1px solid ${b.fg}55`, borderRadius: 7, padding: "5px 8px", fontWeight: 600, flexShrink: 0, marginTop: 1, boxShadow: `0 0 8px ${b.fg}33` }}>{b.label}</button>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{t.title}</div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        <select value={t.owner} onChange={e => patch(t, { owner: e.target.value })} style={{ ...inputStyle, fontFamily: FONT_MONO, fontSize: 11, padding: "3px 5px", color: t.owner ? C.ink : C.faint }}>
+                          <option value="">owner?</option>
+                          {data.crew.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                          <option value="all girls">all girls</option>
+                          <option value="everyone">everyone</option>
+                          <option value="GC vote">GC vote</option>
+                        </select>
+                        <select value={t.pri || "gen"} onChange={e => patch(t, { pri: e.target.value })} style={{ ...inputStyle, fontFamily: FONT_MONO, fontSize: 11, padding: "3px 5px", color: cat.color }}>
+                          {CATS.map(c2 => <option key={c2.id} value={c2.id}>{c2.icon} {c2.label.toLowerCase()}</option>)}
+                        </select>
+                        {t.due ? <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: C.faint }}>due {t.due}</span> : null}
+                        <button onClick={() => remove(t)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#5A4A7E", fontSize: 14 }}>✕</button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        );
+      })}
+
+      {/* add row */}
+      <Card style={{ border: `1px dashed ${C.purple}99`, background: "transparent", padding: 10, marginTop: 14 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} placeholder="Add an action item…" style={{ flex: 1, border: "none", outline: "none", fontSize: 14, background: "transparent", color: C.ink }} />
+          <button onClick={add} style={{ background: RAINBOW, color: "#0B0414", border: "none", borderRadius: 9, padding: "8px 14px", fontWeight: 800, fontSize: 13 }}>Add</button>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {CATS.map(c2 => (
+            <button key={c2.id} onClick={() => setNewPri(c2.id)} style={{ flex: 1, fontFamily: FONT_MONO, fontSize: 9, fontWeight: 600, letterSpacing: .5, borderRadius: 7, padding: "6px 2px", background: newPri === c2.id ? c2.dk : C.chip, color: newPri === c2.id ? c2.color : C.faint, border: `1px solid ${newPri === c2.id ? c2.color : C.line}55` }}>{c2.icon} {c2.label}</button>
+          ))}
+        </div>
+      </Card>
+
+      {/* completed ledger */}
+      {doneList.length > 0 && (
+        <div>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: 1.5, color: C.faint, margin: "16px 4px 8px" }}>✓ COMPLETED · {doneList.length}</div>
+          <Card style={{ padding: "6px 12px", opacity: .75 }}>
+            {doneList.map((t, i) => (
+              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderTop: i ? `1px solid ${C.line}` : "none" }}>
+                <button onClick={() => cycle(t)} title="reopen" style={{ background: C.greenDk, color: C.green, border: `1px solid ${C.green}44`, borderRadius: 6, fontFamily: FONT_MONO, fontSize: 9, padding: "3px 6px", flexShrink: 0 }}>✓</button>
+                <span style={{ flex: 1, fontSize: 13, color: C.faint, textDecoration: "line-through" }}>{t.title}</span>
+                <button onClick={() => remove(t)} style={{ background: "none", border: "none", color: "#5A4A7E", fontSize: 13 }}>✕</button>
+              </div>
+            ))}
+          </Card>
+        </div>
+      )}
+      <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.faint, padding: "6px 4px 12px", lineHeight: 1.6 }}>
+        TAP STATUS TO CYCLE: OPEN → WAITING → DONE. DIGEST EMAIL GOES OUT NIGHTLY AT 10PM ET.
+      </div>
+    </div>
+  );
+}
+
+
+/* ---------- Fits: wardrobe planner ---------- */
+function Fits({ data, commit, me }) {
+  const girls = data.crew.filter(c => !c.host);
+
+  function setTheme(day, theme) {
+    commit({ ...data, days: data.days.map(d => d.id === day.id ? { ...d, theme } : d) });
+  }
+  function cycleFit(day, personId) {
+    const cur = (day.fits || {})[personId] || 0;
+    const next = (cur + 1) % FIT_STAGES.length;
+    commit({ ...data, days: data.days.map(d => d.id === day.id ? { ...d, fits: { ...d.fits, [personId]: next } } : d) });
+  }
+  function setChar(day, personId, val) {
+    commit({ ...data, days: data.days.map(d => d.id === day.id ? { ...d, chars: { ...(d.chars || {}), [personId]: val } } : d) });
+  }
+
+  return (
+    <div>
+      <SectionTitle kicker="CREATIVE DIRECTION · LOOKS DEPT." title="Fit Assignments" />
+      {data.days.map(day => {
+        const th = THEMES[day.theme] || THEMES.none;
+        return (
+          <Card key={day.id} style={{ borderLeft: `4px solid ${th.color}`, boxShadow: day.theme !== "none" ? `0 0 16px ${th.color}22` : "none" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <div>
+                <div style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: 17, color: C.ink }}>{day.label}</div>
+                <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.faint }}>{day.sub}</div>
+              </div>
+              <select value={day.theme} onChange={e => setTheme(day, e.target.value)} style={{ background: th.soft, color: th.color, border: `1px solid ${th.color}66`, borderRadius: 9, padding: "7px 9px", fontWeight: 700, fontSize: 13 }}>
+                {Object.entries(THEMES).map(([k, v]) => <option key={k} value={k}>{v.emoji} {v.label}</option>)}
+              </select>
+            </div>
+            {girls.map(g => {
+              const stage = (day.fits || {})[g.id] || 0;
+              return (
+                <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderTop: `1px solid ${C.line}` }}>
+                  <div style={{ fontSize: 13.5, fontWeight: g.id === me ? 700 : 500, flex: 1, color: g.id === me ? C.ink : "#D8CCEF" }}>{g.name}</div>
+                  {day.theme === "puff" && (
+                    <input value={(day.chars || {})[g.id] || ""} onChange={e => setChar(day, g.id, e.target.value)} placeholder="character" style={{ ...inputStyle, width: 90, fontSize: 12, padding: "4px 6px" }} />
+                  )}
+                  <button onClick={() => cycleFit(day, g.id)} style={{ fontFamily: FONT_MONO, fontSize: 10.5, fontWeight: 600, borderRadius: 7, padding: "5px 9px", minWidth: 70, background: stage === 3 ? C.greenDk : stage > 0 ? C.amberDk : C.chip, color: stage === 3 ? C.green : stage > 0 ? C.amber : C.faint, border: `1px solid ${stage === 3 ? C.green : stage > 0 ? C.amber : C.line}55` }}>
+                    {FIT_STAGES[stage]}
+                  </button>
+                </div>
+              );
+            })}
+          </Card>
+        );
+      })}
+      <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.faint, padding: "2px 4px 12px", lineHeight: 1.6 }}>
+        NIGHT SKY RANGE: ALL BLACK → BLINGED-OUT BADDIE. TAP YOUR FIT STATUS TO CYCLE IT.
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Pack: shared RV group supply list ---------- */
+const PACK_CATS = ["Sun & Heat", "RV / Good Life", "Food & Kitchen", "Health & Safety", "Forest Fun"];
+
+function Pack({ data, commit, meName }) {
+  const [item, setItem] = useState("");
+  const [addCat, setAddCat] = useState(PACK_CATS[1]);
+  const [confirmReset, setConfirmReset] = useState(false);
+  function claim(p) {
+    const mine = p.by === meName;
+    commit({ ...data, packing: data.packing.map(x => x.id === p.id ? { ...x, by: mine ? "" : meName } : x) });
+  }
+  function toggleDone(p) {
+    commit({ ...data, packing: data.packing.map(x => x.id === p.id ? { ...x, done: !x.done } : x) });
+  }
+  function remove(p) {
+    commit({ ...data, packing: data.packing.filter(x => x.id !== p.id) });
+  }
+  function add() {
+    if (!item.trim()) return;
+    commit({ ...data, packing: [...data.packing, { id: uid(), name: item.trim(), cat: addCat, by: "", done: false }] });
+    setItem("");
+  }
+  function resetPacking() {
+    commit({ ...data, packing: defaultPacking() });
+    setConfirmReset(false);
+  }
+  const packed = data.packing.filter(p => p.done).length;
+  const claimed = data.packing.filter(p => p.by).length;
+  const cats = [...PACK_CATS, ...Array.from(new Set(data.packing.map(p => p.cat).filter(c => c && !PACK_CATS.includes(c))))];
+
+  return (
+    <div>
+      <SectionTitle kicker={`SHARED RV SUPPLIES · 5 PEOPLE, 1 RV`} title="Group Packing" />
+      <Card style={{ display: "flex", gap: 16, padding: "10px 14px", background: C.card2, border: `1px solid ${C.purple}55` }}>
+        <div><span style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: 20, color: C.green }}>{packed}</span><span style={{ fontFamily: FONT_MONO, fontSize: 9, color: C.faint, marginLeft: 5 }}>SECURED</span></div>
+        <div><span style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: 20, color: C.cyan }}>{claimed}</span><span style={{ fontFamily: FONT_MONO, fontSize: 9, color: C.faint, marginLeft: 5 }}>CLAIMED</span></div>
+        <div><span style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: 20, color: C.pink }}>{data.packing.length}</span><span style={{ fontFamily: FONT_MONO, fontSize: 9, color: C.faint, marginLeft: 5 }}>TOTAL</span></div>
+      </Card>
+
+      {cats.map(cat => {
+        const list = data.packing.filter(p => (p.cat || "RV / Good Life") === cat);
+        if (!list.length) return null;
+        return (
+          <div key={cat}>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: 1.5, color: C.amber, margin: "16px 4px 8px" }}>{cat.toUpperCase()} · {list.length}</div>
+            {list.map(p => (
+              <Card key={p.id} style={{ padding: "9px 12px", display: "flex", alignItems: "center", gap: 9 }}>
+                <button onClick={() => toggleDone(p)} aria-label="secured" style={{ width: 22, height: 22, borderRadius: 7, border: `2px solid ${p.done ? C.green : C.line}`, background: p.done ? C.greenDk : "transparent", color: C.green, fontSize: 13, lineHeight: "16px", flexShrink: 0, boxShadow: p.done ? `0 0 8px ${C.green}44` : "none" }}>{p.done ? "✓" : ""}</button>
+                <div style={{ flex: 1, fontSize: 13.5, fontWeight: 550, color: p.done ? C.faint : C.ink }}>{p.name}</div>
+                <button onClick={() => claim(p)} style={{ fontFamily: FONT_MONO, fontSize: 10, fontWeight: 600, borderRadius: 7, padding: "5px 8px", flexShrink: 0, background: p.by ? (p.by === meName ? C.greenDk : C.cyanDk) : C.chip, color: p.by ? (p.by === meName ? C.green : C.cyan) : C.faint, border: `1px solid ${p.by ? (p.by === meName ? C.green : C.cyan) : C.line}55` }}>
+                  {p.by ? p.by : "claim"}
+                </button>
+                <button onClick={() => remove(p)} aria-label="delete" style={{ background: "none", border: "none", color: "#5A4A7E", fontSize: 15, flexShrink: 0, padding: "0 2px" }}>🗑</button>
+              </Card>
+            ))}
+          </div>
+        );
+      })}
+
+      <Card style={{ border: `1px dashed ${C.purple}99`, background: "transparent", padding: 10, marginTop: 14 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input value={item} onChange={e => setItem(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} placeholder="Add a shared item…" style={{ flex: 1, border: "none", outline: "none", fontSize: 14, background: "transparent", color: C.ink }} />
+          <button onClick={add} style={{ background: RAINBOW, color: "#0B0414", border: "none", borderRadius: 9, padding: "8px 14px", fontWeight: 800, fontSize: 13 }}>Add</button>
+        </div>
+        <select value={addCat} onChange={e => setAddCat(e.target.value)} style={{ ...inputStyle, width: "100%", fontFamily: FONT_MONO, fontSize: 11 }}>
+          {PACK_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </Card>
+      <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.faint, padding: "6px 4px 12px", lineHeight: 1.6 }}>
+        SHARED GROUP GEAR ONLY · ✓ = SECURED/PACKED · CLAIM = WHO'S BRINGING IT · 🗑 = DELETE. PERSONAL ITEMS STAY IN YOUR OWN BAG.
+      </div>
+
+      {!confirmReset ? (
+        <button onClick={() => setConfirmReset(true)} style={{ width: "100%", background: "transparent", border: `1px solid ${C.line}`, color: C.faint, borderRadius: 10, padding: "10px", fontFamily: FONT_MONO, fontSize: 11, letterSpacing: 1, marginBottom: 8 }}>
+          ↺ RESET PACKING LIST TO DEFAULTS
+        </button>
+      ) : (
+        <Card style={{ border: `1px solid ${C.pink}66`, background: C.pinkDk }}>
+          <div style={{ fontSize: 13, color: C.ink, marginBottom: 4, fontWeight: 600 }}>Reset the packing list?</div>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: "#E8B8D4", marginBottom: 10, lineHeight: 1.5 }}>
+            This restores the full default forest list and clears all claims/checks on packing ONLY. Tasks, travel, cash, fits, and charter are untouched.
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={resetPacking} style={{ flex: 1, background: C.pink, color: "#0B0414", border: "none", borderRadius: 9, padding: "10px", fontWeight: 800, fontSize: 13 }}>Yes, reset packing</button>
+            <button onClick={() => setConfirmReset(false)} style={{ flex: 1, background: C.chip, color: C.faint, border: `1px solid ${C.line}`, borderRadius: 9, padding: "10px", fontWeight: 600, fontSize: 13 }}>Cancel</button>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Plan: rally points + wishlist ---------- */
+function Plan({ data, commit, meName }) {
+  const [artist, setArtist] = useState("");
+  const [day, setDay] = useState("thu");
+
+  function setRally(d, val) {
+    commit({ ...data, days: data.days.map(x => x.id === d.id ? { ...x, rally: val } : x) });
+  }
+  function add() {
+    if (!artist.trim()) return;
+    commit({ ...data, wishlist: [...data.wishlist, { id: uid(), artist: artist.trim(), day, who: meName, must: false }] });
+    setArtist("");
+  }
+  function toggleMust(w) {
+    commit({ ...data, wishlist: data.wishlist.map(x => x.id === w.id ? { ...x, must: !x.must } : x) });
+  }
+  function remove(w) {
+    commit({ ...data, wishlist: data.wishlist.filter(x => x.id !== w.id) });
+  }
+
+  return (
+    <div>
+      <SectionTitle kicker="MOVEMENT PROTOCOL" title="Schedule & Rally Points" />
+      <Card>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 10, letterSpacing: 1.5, color: C.amber, marginBottom: 8 }}>DAILY RALLY POINT (FOR WHEN SERVICE DIES)</div>
+        {data.days.filter(d => d.id !== "wed").map(d => (
+          <div key={d.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "5px 0" }}>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 11, width: 64, color: C.faint }}>{d.label.split(" ")[0]}</div>
+            <input value={d.rally} onChange={e => setRally(d, e.target.value)} placeholder="e.g. Giant Mushroom, 9pm check-in" style={{ ...inputStyle, flex: 1 }} />
+          </div>
+        ))}
+      </Card>
+
+      <div style={{ fontFamily: FONT_MONO, fontSize: 10, letterSpacing: 1.5, color: C.amber, margin: "14px 4px 8px" }}>SET WISHLIST · ★ = WORTH SPLITTING THE GROUP FOR</div>
+      {data.wishlist.length === 0 && (
+        <Card style={{ color: C.faint, fontSize: 13.5 }}>Nothing yet. Lineup drops → dump every must-see here, fight about conflicts later.</Card>
+      )}
+      {data.wishlist.map(w => (
+        <Card key={w.id} style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={() => toggleMust(w)} style={{ background: "none", border: "none", fontSize: 18, color: w.must ? C.amber : "#473866", padding: 0, textShadow: w.must ? `0 0 10px ${C.amber}` : "none" }}>★</button>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 650, color: C.ink }}>{w.artist}</div>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.faint }}>{(data.days.find(d => d.id === w.day) || {}).label} · added by {w.who}</div>
+          </div>
+          <button onClick={() => remove(w)} style={{ background: "none", border: "none", color: "#5A4A7E", fontSize: 14 }}>✕</button>
+        </Card>
+      ))}
+      <Card style={{ display: "flex", gap: 8, padding: 10, border: `1px dashed ${C.purple}99`, background: "transparent" }}>
+        <input value={artist} onChange={e => setArtist(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} placeholder="Artist…" style={{ flex: 1, minWidth: 0, border: "none", outline: "none", fontSize: 14, background: "transparent", color: C.ink }} />
+        <select value={day} onChange={e => setDay(e.target.value)} style={{ ...inputStyle, fontFamily: FONT_MONO, fontSize: 11, padding: "4px 6px" }}>
+          {data.days.filter(d => d.id !== "wed").map(d => <option key={d.id} value={d.id}>{d.label.split(" ")[0]}</option>)}
+        </select>
+        <button onClick={add} style={{ background: RAINBOW, color: "#0B0414", border: "none", borderRadius: 9, padding: "8px 12px", fontWeight: 800, fontSize: 13 }}>Add</button>
+      </Card>
+    </div>
+  );
+}
+
+/* ---------- Cash: ledger + balances ---------- */
+function Cash({ data, commit, me }) {
+  const [desc, setDesc] = useState("");
+  const [amt, setAmt] = useState("");
+  const [paidBy, setPaidBy] = useState(me === "__qa__" ? "sarah" : me);
+  const [split, setSplit] = useState(data.crew.filter(c => !c.host).map(c => c.id));
+
+  function toggleSplit(id) {
+    setSplit(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  }
+  function add() {
+    const n = parseFloat(amt);
+    if (!desc.trim() || !n || split.length === 0) return;
+    commit({ ...data, expenses: [...data.expenses, { id: uid(), desc: desc.trim(), amt: n, paidBy, split }] });
+    setDesc(""); setAmt("");
+  }
+  function remove(x) {
+    commit({ ...data, expenses: data.expenses.filter(e => e.id !== x.id) });
+  }
+
+  const bal = {};
+  data.crew.forEach(c => bal[c.id] = 0);
+  data.expenses.forEach(e => {
+    const share = e.amt / e.split.length;
+    bal[e.paidBy] = (bal[e.paidBy] || 0) + e.amt;
+    e.split.forEach(id => { bal[id] = (bal[id] || 0) - share; });
+  });
+  const nameOf = id => (data.crew.find(c => c.id === id) || {}).name || id;
+
+  return (
+    <div>
+      <SectionTitle kicker="GROUP TREASURY" title="Cost Ledger" />
+      <Card>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 10, letterSpacing: 1.5, color: C.amber, marginBottom: 8 }}>NET POSITIONS</div>
+        {data.crew.map(c => (
+          <div key={c.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13.5 }}>
+            <span style={{ fontWeight: c.id === me ? 700 : 500 }}>{c.name}</span>
+            <span style={{ fontFamily: FONT_MONO, fontWeight: 600, color: bal[c.id] > 0.01 ? C.green : bal[c.id] < -0.01 ? C.pink : C.faint }}>
+              {bal[c.id] > 0.01 ? "+" : ""}{bal[c.id].toFixed(2)}
+            </span>
+          </div>
+        ))}
+        <div style={{ fontFamily: FONT_MONO, fontSize: 10, color: C.faint, marginTop: 6 }}>+ = OWED MONEY · − = OWES MONEY · SETTLE VIA VENMO AT WHEELS-UP</div>
+      </Card>
+
+      {data.expenses.map(e => (
+        <Card key={e.id} style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 650, color: C.ink }}>{e.desc}</div>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.faint }}>{nameOf(e.paidBy)} paid · split {e.split.length} ways</div>
+          </div>
+          <div style={{ fontFamily: FONT_MONO, fontWeight: 600, color: C.cyan }}>${e.amt.toFixed(2)}</div>
+          <button onClick={() => remove(e)} style={{ background: "none", border: "none", color: "#5A4A7E", fontSize: 14 }}>✕</button>
+        </Card>
+      ))}
+
+      <Card>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="What was it (jerseys, gas, snacks…)" style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+          <input value={amt} onChange={e => setAmt(e.target.value)} placeholder="$" inputMode="decimal" style={{ ...inputStyle, width: 70 }} />
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.faint }}>PAID BY</span>
+          <select value={paidBy} onChange={e => setPaidBy(e.target.value)} style={{ ...inputStyle, fontSize: 12.5, padding: "5px 7px" }}>
+            {data.crew.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+          {data.crew.map(c => (
+            <button key={c.id} onClick={() => toggleSplit(c.id)} style={{ fontFamily: FONT_MONO, fontSize: 10.5, fontWeight: 600, borderRadius: 99, padding: "6px 11px", background: split.includes(c.id) ? C.purpleDk : C.chip, color: split.includes(c.id) ? "#CBA4FF" : C.faint, border: `1px solid ${split.includes(c.id) ? C.purple : C.line}66` }}>{c.name}</button>
+          ))}
+        </div>
+        <button onClick={add} style={{ width: "100%", background: RAINBOW, color: "#0B0414", border: "none", borderRadius: 11, padding: "11px", fontWeight: 800, fontSize: 14 }}>Log expense</button>
+      </Card>
+    </div>
+  );
+}
+
+/* ---------- Charter ---------- */
+function Charter({ data, commit, meName }) {
+  const signed = data.charterSigs.includes(meName);
+  function sign() {
+    if (signed) return;
+    commit({ ...data, charterSigs: [...data.charterSigs, meName] });
+  }
+  return (
+    <div>
+      <SectionTitle kicker="GOVERNANCE · RATIFIED IN THE GC" title="The RV Charter" />
+      <Card style={{ background: C.card2, border: `1px solid ${C.purple}55`, boxShadow: `0 0 20px ${C.purple}22` }}>
+        {CHARTER.map((r, i) => (
+          <div key={i} style={{ display: "flex", gap: 10, padding: "9px 0", borderBottom: i < CHARTER.length - 1 ? `1px solid ${C.line}` : "none" }}>
+            <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: C.amber, flexShrink: 0, paddingTop: 2 }}>§{i + 1}</span>
+            <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "#E5DBF8" }}>{r}</span>
+          </div>
+        ))}
+      </Card>
+      <Card>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 10, letterSpacing: 1.5, color: C.amber, marginBottom: 8 }}>SIGNATORIES ({data.charterSigs.length}/{data.crew.length})</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+          {data.crew.map(c => (
+            <span key={c.id} style={{ fontFamily: FONT_MONO, fontSize: 11, fontWeight: 600, borderRadius: 99, padding: "6px 11px", background: data.charterSigs.includes(c.name) ? C.greenDk : C.chip, color: data.charterSigs.includes(c.name) ? C.green : C.faint, border: `1px solid ${data.charterSigs.includes(c.name) ? C.green : C.line}55` }}>
+              {data.charterSigs.includes(c.name) ? "✓ " : ""}{c.name}
+            </span>
+          ))}
+        </div>
+        <button onClick={sign} disabled={signed} style={{ width: "100%", background: signed ? C.greenDk : RAINBOW, color: signed ? C.green : "#0B0414", border: signed ? `1px solid ${C.green}66` : "none", borderRadius: 11, padding: "12px", fontWeight: 800, fontSize: 14 }}>
+          {signed ? "You have signed. Legally binding (emotionally)." : "Sign the charter"}
+        </button>
+      </Card>
+    </div>
+  );
+}
+
+/* ---------- Travel: flight manifest ---------- */
+function Travel({ data, commit, me }) {
+  const travel = data.travel || {};
+  const ground = data.ground || { car: "", note: "" };
+  const MODES = [
+    { id: "fly", icon: "✈", label: "FLY" },
+    { id: "drive", icon: "🚗", label: "DRIVE" },
+    { id: "rv", icon: "🚐", label: "RV" },
+  ];
+  const LEGS = [
+    { id: "in", label: "ARRIVING", target: "TARGET: WED 6/24 EVE", ph: "e.g. DL2214 → GRR · Wed 10:05a" },
+    { id: "out", label: "DEPARTING", target: "FEST ENDS SUN 6/28", ph: "e.g. GRR → home · Mon 9:40a" },
+  ];
+
+  function legOf(cid, leg) {
+    return ((travel[cid] || {})[leg]) || { via: "fly", detail: "", booked: false };
+  }
+  function upd(cid, leg, patch) {
+    const cur = travel[cid] || {};
+    commit({ ...data, travel: { ...travel, [cid]: { ...cur, [leg]: { ...legOf(cid, leg), ...patch } } } });
+  }
+  function setNote(cid, v) {
+    commit({ ...data, travel: { ...travel, [cid]: { ...(travel[cid] || {}), note: v } } });
+  }
+  function updGround(patch) {
+    commit({ ...data, ground: { ...ground, ...patch } });
+  }
+
+  const totalLegs = data.crew.length * 2;
+  const bookedLegs = data.crew.reduce((n, c) => n + (legOf(c.id, "in").booked ? 1 : 0) + (legOf(c.id, "out").booked ? 1 : 0), 0);
+
+  return (
+    <div>
+      <SectionTitle kicker={`FLIGHT MANIFEST · ${bookedLegs}/${totalLegs} LEGS BOOKED`} title="Travel Plans" />
+
+      <Card style={{ border: `1px solid ${C.cyan}55`, boxShadow: `0 0 16px ${C.cyan}18` }}>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 10, letterSpacing: 1.5, color: C.cyan, marginBottom: 8 }}>🚗 GROUND GAME (SHARED)</div>
+        <input value={ground.car} onChange={e => updGround({ car: e.target.value })} placeholder="Rental car: company · whose name · pickup spot + time" style={{ ...inputStyle, width: "100%", marginBottom: 8 }} />
+        <input value={ground.note} onChange={e => updGround({ note: e.target.value })} placeholder="Parking / logistics notes" style={{ ...inputStyle, width: "100%" }} />
+      </Card>
+
+      {data.crew.map(c => {
+        const note = (travel[c.id] || {}).note || "";
+        return (
+          <Card key={c.id}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <div style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: 16, color: c.id === me ? C.ink : "#D8CCEF", flex: 1 }}>{c.name}</div>
+              {c.host && <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: C.amber, letterSpacing: 1 }}>RV HOST</span>}
+            </div>
+            {LEGS.map(L => {
+              const leg = legOf(c.id, L.id);
+              return (
+                <div key={L.id} style={{ borderTop: `1px solid ${C.line}`, padding: "8px 0" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: 1, color: C.faint, flex: 1 }}>{L.id === "in" ? "⬇" : "⬆"} {L.label} <span style={{ color: "#5A4A7E" }}>· {L.target}</span></span>
+                    <span style={{ display: "flex", gap: 4 }}>
+                      {MODES.map(m => (
+                        <button key={m.id} onClick={() => upd(c.id, L.id, { via: m.id })} title={m.label} style={{ fontSize: 12, borderRadius: 6, padding: "3px 7px", background: leg.via === m.id ? C.purpleDk : C.chip, border: `1px solid ${leg.via === m.id ? C.purple : C.line}66`, color: leg.via === m.id ? "#CBA4FF" : C.faint }}>{m.icon}</button>
+                      ))}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input value={leg.detail} onChange={e => upd(c.id, L.id, { detail: e.target.value })} placeholder={L.ph} style={{ ...inputStyle, flex: 1, minWidth: 0, fontSize: 12.5 }} />
+                    <button onClick={() => upd(c.id, L.id, { booked: !leg.booked })} style={{ fontFamily: FONT_MONO, fontSize: 9.5, fontWeight: 600, letterSpacing: .5, borderRadius: 7, padding: "6px 8px", flexShrink: 0, background: leg.booked ? C.greenDk : C.pinkDk, color: leg.booked ? C.green : C.pink, border: `1px solid ${leg.booked ? C.green : C.pink}55` }}>
+                      {leg.booked ? "BOOKED ✓" : "NOT BOOKED"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            <input value={note} onChange={e => setNote(c.id, e.target.value)} placeholder="Notes (luggage, timing, who you're riding with…)" style={{ ...inputStyle, width: "100%", marginTop: 8, fontSize: 12 }} />
+          </Card>
+        );
+      })}
+      <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.faint, padding: "2px 4px 12px", lineHeight: 1.6 }}>
+        INTEL: GRR (GRAND RAPIDS) IS CLOSEST · ORD (CHICAGO) IS CHEAPEST, ~3H DRIVE · DTW IS THE RV RUN. EVERYONE OWNS THEIR OWN ROW.
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Quick Add: global + button + bottom sheet ---------- */
+function QuickAdd({ data, commit, meName, setTab }) {
+  const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState("task");
+  const [text, setText] = useState("");
+  const [owner, setOwner] = useState("");
+  const [pri, setPri] = useState("gen");
+  const [day, setDay] = useState("thu");
+  const [flash, setFlash] = useState("");
+
+  const KINDS = [
+    { id: "task", label: "Action item", icon: "◉", hint: "e.g. Order glitter, confirm car…" },
+    { id: "pack", label: "Packing item", icon: "▣", hint: "e.g. Hand warmers, mushroom lamp…" },
+    { id: "set", label: "Set wishlist", icon: "✦", hint: "Artist name…" },
+  ];
+  const k = KINDS.find(x => x.id === kind);
+
+  function doAdd() {
+    if (!text.trim()) return;
+    if (kind === "task") {
+      commit({ ...data, tasks: [...data.tasks, { id: uid(), title: text.trim(), owner, due: "", status: "open", pri }] });
+      setFlash("Added to Mission Control ✓");
+    } else if (kind === "pack") {
+      commit({ ...data, packing: [...data.packing, { id: uid(), name: text.trim(), cat: "RV / Good Life", by: "", done: false }] });
+      setFlash("Added to Packing Matrix ✓");
+    } else {
+      commit({ ...data, wishlist: [...data.wishlist, { id: uid(), artist: text.trim(), day, who: meName, must: false }] });
+      setFlash("Added to Set Wishlist ✓");
+    }
+    setText("");
+    setTimeout(() => setFlash(""), 1800);
+  }
+
+  return (
+    <React.Fragment>
+      <button onClick={() => setOpen(true)} aria-label="Quick add" style={{ position: "fixed", right: 16, bottom: "calc(76px + env(safe-area-inset-bottom))", width: 56, height: 56, borderRadius: 99, border: "none", background: RAINBOW, color: "#0B0414", fontSize: 30, fontWeight: 800, lineHeight: "54px", boxShadow: "0 0 22px rgba(255,79,195,.55), 0 4px 14px rgba(0,0,0,.5)", zIndex: 40 }}>+</button>
+
+      {open && (
+        <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(5,2,12,.7)", backdropFilter: "blur(3px)", zIndex: 50, display: "flex", alignItems: "flex-end" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, margin: "0 auto", background: C.card2, borderTop: `1px solid ${C.purple}66`, borderRadius: "20px 20px 0 0", padding: "16px 16px calc(20px + env(safe-area-inset-bottom))", boxShadow: `0 -8px 40px ${C.purple}33` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <Rainbow size={20}>Quick Add</Rainbow>
+              <button onClick={() => setOpen(false)} style={{ background: C.chip, border: `1px solid ${C.line}`, color: C.faint, borderRadius: 99, width: 30, height: 30, fontSize: 14 }}>✕</button>
+            </div>
+
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {KINDS.map(x => (
+                <button key={x.id} onClick={() => { setKind(x.id); setFlash(""); }} style={{ flex: 1, fontFamily: FONT_MONO, fontSize: 10.5, fontWeight: 600, letterSpacing: .5, borderRadius: 10, padding: "10px 4px", background: kind === x.id ? C.purpleDk : C.chip, color: kind === x.id ? "#CBA4FF" : C.faint, border: `1px solid ${kind === x.id ? C.purple : C.line}66` }}>
+                  <div style={{ fontSize: 15, marginBottom: 2 }}>{x.icon}</div>{x.label.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && doAdd()} placeholder={k.hint} autoFocus style={{ ...inputStyle, width: "100%", fontSize: 15, padding: "12px 12px", marginBottom: 10 }} />
+
+            {kind === "task" && (
+              <div>
+                <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                  {CATS.map(c2 => (
+                    <button key={c2.id} onClick={() => setPri(c2.id)} style={{ flex: 1, fontFamily: FONT_MONO, fontSize: 9, fontWeight: 600, letterSpacing: .5, borderRadius: 8, padding: "8px 2px", background: pri === c2.id ? c2.dk : C.chip, color: pri === c2.id ? c2.color : C.faint, border: `1px solid ${pri === c2.id ? c2.color : C.line}55` }}>{c2.icon} {c2.label}</button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+                  <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.faint }}>OWNER</span>
+                  <select value={owner} onChange={e => setOwner(e.target.value)} style={{ ...inputStyle, flex: 1, fontSize: 13 }}>
+                    <option value="">unassigned (brave)</option>
+                    {data.crew.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    <option value="all girls">all girls</option>
+                    <option value="everyone">everyone</option>
+                    <option value="GC vote">GC vote</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {kind === "set" && (
+              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                {data.days.filter(d => d.id !== "wed").map(d => (
+                  <button key={d.id} onClick={() => setDay(d.id)} style={{ flex: 1, fontFamily: FONT_MONO, fontSize: 11, fontWeight: 600, borderRadius: 8, padding: "8px 4px", background: day === d.id ? C.greenDk : C.chip, color: day === d.id ? C.green : C.faint, border: `1px solid ${day === d.id ? C.green : C.line}55` }}>{d.label.split(" ")[0].toUpperCase()}</button>
+                ))}
+              </div>
+            )}
+
+            <button onClick={doAdd} style={{ width: "100%", background: RAINBOW, color: "#0B0414", border: "none", borderRadius: 12, padding: "13px", fontWeight: 800, fontSize: 15 }}>Add it ✦</button>
+
+            <div style={{ minHeight: 22, textAlign: "center", paddingTop: 8 }}>
+              {flash && <span style={{ fontFamily: FONT_MONO, fontSize: 11.5, color: C.green, textShadow: `0 0 8px ${C.green}66` }}>{flash}</span>}
+            </div>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 10, color: C.faint, textAlign: "center" }}>
+              EXPENSES LIVE IN <button onClick={() => { setOpen(false); setTab("cash"); }} style={{ background: "none", border: "none", color: C.cyan, fontFamily: FONT_MONO, fontSize: 10, padding: 0, textDecoration: "underline" }}>THE CASH TAB</button> — TAP TO GO
+            </div>
+          </div>
+        </div>
+      )}
+    </React.Fragment>
+  );
+}
+
+/* ---------- bottom tabs ---------- */
+function TabBar({ tab, setTab }) {
+  const tabs = [
+    { id: "hq", label: "HQ", icon: "◉" },
+    { id: "fits", label: "Fits", icon: "✦" },
+    { id: "pack", label: "Pack", icon: "▣" },
+    { id: "plan", label: "Plan", icon: "➤" },
+    { id: "travel", label: "Travel", icon: "✈" },
+    { id: "cash", label: "Cash", icon: "$" },
+    { id: "charter", label: "Rules", icon: "§" },
+  ];
+  return (
+    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#0E0519" }}>
+      <div style={{ height: 2, background: RAINBOW }} />
+      <div style={{ display: "flex", justifyContent: "space-around", padding: "8px 2px calc(8px + env(safe-area-inset-bottom))" }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ background: "none", border: "none", color: tab === t.id ? C.green : "#6E5F8E", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "2px 4px", textShadow: tab === t.id ? `0 0 10px ${C.green}88` : "none" }}>
+            <span style={{ fontSize: 15 }}>{t.icon}</span>
+            <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: .5, fontWeight: tab === t.id ? 700 : 400 }}>{t.label.toUpperCase()}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

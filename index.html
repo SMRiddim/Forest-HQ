@@ -150,6 +150,15 @@ const SEED = {
     mark: { in: { via: "rv", detail: "With Jeff — DTW Wed AM → RV pickup → forest", booked: true }, out: { via: "rv", detail: "With Jeff", booked: true }, note: "" },
   },
   ground: { car: "", note: "1 rental car for the girls · parks with the RV via Jeff's companion parking pass" },
+  info: [
+    { id: "i1", cat: "Locations", title: "RV pickup", body: "Picked up near Detroit (DTW) — Jeff/Mark grab it Wed AM. ~1.5h from airport to RV, then drive to forest.", pin: true },
+    { id: "i2", cat: "Locations", title: "Walmart run", body: "Nearest Walmart to Double JJ for the Wed grocery/ice/water stock-up. (drop the exact address here once confirmed)", pin: false },
+    { id: "i3", cat: "Locations", title: "Good Life Village spot", body: "RV hookup site w/ electricity. Add the loop/lot # once Jeff parks so we can all find it.", pin: true },
+    { id: "i4", cat: "Appointments", title: "Braid appointments — Wed 6/24", body: "Time(s), salon name + address, who's getting what. (fill in once booked)", pin: false },
+    { id: "i5", cat: "Confirmations", title: "Rental car confirmation", body: "Company, confirmation #, whose name, pickup/drop time + location.", pin: false },
+    { id: "i6", cat: "Confirmations", title: "Flight confirmations", body: "Drop everyone's airline + confirmation codes here as you book (also on the Travel tab).", pin: false },
+    { id: "i7", cat: "Good to know", title: "Festival dates + gates", body: "Electric Forest June 25–28 · Double JJ Resort, Rothbury MI. RV staging Wed 6/24.", pin: false },
+  ],
 };
 
 const CHARTER = [
@@ -193,6 +202,7 @@ function normalize(d) {
   const PRI_MAP = { t1: "high", t2: "high", t3: "pre", t4: "pre", t5: "pre", t7: "pre", t8: "pre", t9: "pre" };
   d.tasks = d.tasks.map(t => ({ ...t, pri: t.pri || PRI_MAP[t.id] || "gen" }));
   d.packing = d.packing.map(p => ({ ...p, cat: p.cat || "RV / Good Life" }));
+  d.info = Array.isArray(d.info) ? d.info : [];
   return d;
 }
 
@@ -294,6 +304,7 @@ function App() {
         {tab === "pack" && <Pack data={data} commit={commit} meName={meName} />}
         {tab === "plan" && <Plan data={data} commit={commit} meName={meName} />}
         {tab === "travel" && <Travel data={data} commit={commit} me={me} />}
+        {tab === "info" && <Info data={data} commit={commit} />}
         {tab === "cash" && <Cash data={data} commit={commit} me={me} />}
         {tab === "charter" && <Charter data={data} commit={commit} meName={meName} />}
       </div>
@@ -976,6 +987,101 @@ function Travel({ data, commit, me }) {
   );
 }
 
+/* ---------- Info: shared notes board ---------- */
+const INFO_CATS = ["Locations", "Appointments", "Confirmations", "Good to know"];
+
+function Info({ data, commit }) {
+  const info = data.info || [];
+  const [open, setOpen] = useState(null); // id being edited, or "new"
+  const [draft, setDraft] = useState({ cat: "Locations", title: "", body: "" });
+
+  function startNew() { setDraft({ cat: "Locations", title: "", body: "" }); setOpen("new"); }
+  function startEdit(n) { setDraft({ cat: n.cat, title: n.title, body: n.body }); setOpen(n.id); }
+  function save() {
+    if (!draft.title.trim() && !draft.body.trim()) { setOpen(null); return; }
+    if (open === "new") {
+      commit({ ...data, info: [...info, { id: uid(), cat: draft.cat, title: draft.title.trim(), body: draft.body.trim(), pin: false }] });
+    } else {
+      commit({ ...data, info: info.map(n => n.id === open ? { ...n, cat: draft.cat, title: draft.title.trim(), body: draft.body.trim() } : n) });
+    }
+    setOpen(null);
+  }
+  function remove(n) { commit({ ...data, info: info.filter(x => x.id !== n.id) }); setOpen(null); }
+  function togglePin(n) { commit({ ...data, info: info.map(x => x.id === n.id ? { ...x, pin: !x.pin } : x) }); }
+
+  const cats = [...INFO_CATS, ...Array.from(new Set(info.map(n => n.cat).filter(c => c && !INFO_CATS.includes(c))))];
+  const pinned = info.filter(n => n.pin);
+
+  function NoteCard(n) {
+    if (open === n.id) {
+      return <Editor key={n.id} draft={draft} setDraft={setDraft} onSave={save} onCancel={() => setOpen(null)} onDelete={() => remove(n)} />;
+    }
+    return (
+      <Card key={n.id} style={{ padding: "11px 13px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink }}>{n.pin ? "📌 " : ""}{n.title || "(untitled)"}</div>
+            {n.body ? <div style={{ fontSize: 13, color: "#D8CCEF", marginTop: 4, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{n.body}</div> : null}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+            <button onClick={() => togglePin(n)} title="pin" style={{ background: "none", border: "none", fontSize: 13, color: n.pin ? C.amber : "#473866", padding: 2 }}>📌</button>
+            <button onClick={() => startEdit(n)} title="edit" style={{ background: "none", border: "none", fontSize: 13, color: C.cyan, padding: 2 }}>✎</button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <div>
+      <SectionTitle kicker="SHARED NOTES · EVERYONE CAN EDIT" title="Important Info" />
+
+      {pinned.length > 0 && (
+        <div style={{ marginBottom: 6 }}>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 10, letterSpacing: 1.5, color: C.amber, margin: "2px 4px 8px" }}>📌 PINNED</div>
+          {pinned.map(NoteCard)}
+        </div>
+      )}
+
+      {cats.map(cat => {
+        const list = info.filter(n => (n.cat || "Good to know") === cat);
+        if (!list.length) return null;
+        return (
+          <div key={cat}>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: 1.5, color: C.cyan, margin: "16px 4px 8px" }}>{cat.toUpperCase()} · {list.length}</div>
+            {list.map(NoteCard)}
+          </div>
+        );
+      })}
+
+      {open === "new"
+        ? <div style={{ marginTop: 12 }}><Editor draft={draft} setDraft={setDraft} onSave={save} onCancel={() => setOpen(null)} /></div>
+        : <button onClick={startNew} style={{ width: "100%", background: "transparent", border: `1px dashed ${C.purple}99`, color: C.ink, borderRadius: 12, padding: "13px", fontWeight: 700, fontSize: 14, marginTop: 12 }}>+ Add a note</button>
+      }
+      <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: C.faint, padding: "10px 4px 12px", lineHeight: 1.6 }}>
+        DROP ANY GROUP INTEL HERE: ADDRESSES, APPT TIMES, CONFIRMATION #S, GATE CODES. TAP ✎ TO EDIT, 📌 TO PIN TO TOP.
+      </div>
+    </div>
+  );
+}
+
+function Editor({ draft, setDraft, onSave, onCancel, onDelete }) {
+  return (
+    <Card style={{ border: `1px solid ${C.purple}66`, background: C.card2 }}>
+      <select value={draft.cat} onChange={e => setDraft({ ...draft, cat: e.target.value })} style={{ ...inputStyle, width: "100%", fontFamily: FONT_MONO, fontSize: 11, marginBottom: 8 }}>
+        {INFO_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+      </select>
+      <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="Title (e.g. RV pickup location)" style={{ ...inputStyle, width: "100%", fontSize: 14, fontWeight: 600, marginBottom: 8 }} />
+      <textarea value={draft.body} onChange={e => setDraft({ ...draft, body: e.target.value })} placeholder="Details — address, time, confirmation #, notes…" rows={4} style={{ ...inputStyle, width: "100%", fontSize: 13, lineHeight: 1.5, resize: "vertical", fontFamily: "inherit" }} />
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <button onClick={onSave} style={{ flex: 1, background: RAINBOW, color: "#0B0414", border: "none", borderRadius: 10, padding: "11px", fontWeight: 800, fontSize: 14 }}>Save</button>
+        <button onClick={onCancel} style={{ background: C.chip, color: C.faint, border: `1px solid ${C.line}`, borderRadius: 10, padding: "11px 16px", fontWeight: 600, fontSize: 14 }}>Cancel</button>
+        {onDelete && <button onClick={onDelete} style={{ background: C.pinkDk, color: C.pink, border: `1px solid ${C.pink}55`, borderRadius: 10, padding: "11px 14px", fontWeight: 600, fontSize: 14 }}>🗑</button>}
+      </div>
+    </Card>
+  );
+}
+
 /* ---------- Quick Add: global + button + bottom sheet ---------- */
 function QuickAdd({ data, commit, meName, setTab }) {
   const [open, setOpen] = useState(false);
@@ -1082,17 +1188,18 @@ function TabBar({ tab, setTab }) {
     { id: "pack", label: "Pack", icon: "▣" },
     { id: "plan", label: "Plan", icon: "➤" },
     { id: "travel", label: "Travel", icon: "✈" },
+    { id: "info", label: "Info", icon: "📌" },
     { id: "cash", label: "Cash", icon: "$" },
     { id: "charter", label: "Rules", icon: "§" },
   ];
   return (
     <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#0E0519" }}>
       <div style={{ height: 2, background: RAINBOW }} />
-      <div style={{ display: "flex", justifyContent: "space-around", padding: "8px 2px calc(8px + env(safe-area-inset-bottom))" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 6px calc(8px + env(safe-area-inset-bottom))", overflowX: "auto", gap: 2 }}>
         {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ background: "none", border: "none", color: tab === t.id ? C.green : "#6E5F8E", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "2px 4px", textShadow: tab === t.id ? `0 0 10px ${C.green}88` : "none" }}>
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ background: "none", border: "none", color: tab === t.id ? C.green : "#6E5F8E", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "2px 6px", flex: "1 0 auto", minWidth: 42, textShadow: tab === t.id ? `0 0 10px ${C.green}88` : "none" }}>
             <span style={{ fontSize: 15 }}>{t.icon}</span>
-            <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: .5, fontWeight: tab === t.id ? 700 : 400 }}>{t.label.toUpperCase()}</span>
+            <span style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: .3, fontWeight: tab === t.id ? 700 : 400 }}>{t.label.toUpperCase()}</span>
           </button>
         ))}
       </div>
